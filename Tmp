@@ -1,0 +1,1293 @@
+package org.tigris.subversion.svnant.commands;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.tools.ant.BuildException;
+import org.dom4j.Document;
+import org.dom4j.Node;
+
+import org.tigris.subversion.svnclientadapter.ISVNClientAdapter;
+import org.tigris.subversion.svnclientadapter.ISVNLogMessage;
+import org.tigris.subversion.svnclientadapter.SVNClientAdapterFactory;
+import org.tigris.subversion.svnclientadapter.SVNClientException;
+import org.tigris.subversion.svnclientadapter.SVNRevision;
+import org.tigris.subversion.svnclientadapter.SVNUrl;
+import org.tigris.subversion.svnclientadapter.svnkit.SvnKitClientAdapterFactory;
+
+import tr.com.aktifbank.jira.restclient.JiraRestClient;
+import tr.com.aktifbank.util.ant.tasks.utils.FisheyeUtils;
+
+/**
+
+* Creates SVN commit dependency report by querying Fisheye, SVN and Jira.
+*
+* The expensive SVN history and Jira status operations are executed in parallel.
+  */
+  public class CreateCommitDependencyReport extends SvnCommand {
+
+  private String issues;
+
+  private String fishEyeHost;
+  private String fishEyeRepositoryName;
+  private String outputFile;
+
+  private String jirausername;
+  private String jirapassword;
+
+  private String svnRepositoryUrl;
+
+  private String deployedStatuses;
+  private List<String> deployedStatusList;
+
+  private String jiraBrowseUrl;
+
+  private String jiraStatuses;
+  private Map<String, String> jiraStasusMap;
+
+  /**
+
+  * Number of worker threads used for parallel SVN/Jira operations.
+    */
+    private int parallelism = 8;
+
+  /**
+
+  * SVN credentials used when creating worker SVN clients.
+  *
+  * These are intentionally separate from the SVN client itself because
+  * the same SVN client must not be shared between worker threads.
+    */
+    private String svnUsername;
+    private String svnPassword;
+
+  /**
+
+  * One Fisheye authentication token is enough for the complete report.
+    */
+    private String fisheyeAuthToken;
+
+  /**
+
+  * Jira status cache.
+  *
+  * The same previous issue can occur in many files. Without this cache,
+  * the same Jira REST request could be executed many times.
+    */
+    private final ConcurrentMap<String, String> jiraStatusCache =
+    new ConcurrentHashMap<String, String>();
+
+  /**
+
+  * Worker executor.
+    */
+    private ExecutorService executor;
+
+  /**
+
+  * Each worker thread gets its own SVN client.
+    */
+    private ThreadLocal<ISVNClientAdapter> workerSvnClient =
+    new ThreadLocal<ISVNClientAdapter>() {
+
+    ```
+         @Override
+         protected ISVNClientAdapter initialValue() {
+             try {
+                 ISVNClientAdapter client =
+                         SVNClientAdapterFactory.createSVNClient(
+                                 SvnKitClientAdapterFactory.SVNKIT_CLIENT);
+
+                 if (svnUsername != null) {
+                     client.setUsername(svnUsername);
+                 }
+
+                 if (svnPassword != null) {
+                     client.setPassword(svnPassword);
+                 }
+
+                 return client;
+
+             } catch (SVNClientException e) {
+                 throw new IllegalStateException(
+                         "Unable to create SVN client for worker thread", e);
+             }
+         }
+     };
+    ```
+
+  /**
+
+  * Each worker thread gets its own Jira client.
+    */
+    private ThreadLocal<JiraRestClient> workerJiraClient =
+    new ThreadLocal<JiraRestClient>() {
+
+    ```
+         @Override
+         protected JiraRestClient initialValue() {
+             return new JiraRestClient(jirausername, jirapassword);
+         }
+     };
+    ```
+
+  public void setJiraStatuses(String jiraStasuses) {
+
+  ```
+   jiraStasusMap = new HashMap<String, String>();
+
+   if (jiraStasuses == null || jiraStasuses.trim().isEmpty()) {
+       return;
+   }
+
+   StringTokenizer tokenizer =
+           new StringTokenizer(jiraStasuses, ",");
+
+   while (tokenizer.hasMoreTokens()) {
+
+       String token = tokenizer.nextToken();
+
+       int index = token.indexOf("#");
+
+       if (index > 0) {
+           jiraStasusMap.put(
+                   token.substring(0, index),
+                   token.substring(index + 1));
+       }
+   }
+  ```
+
+  }
+
+  public void setIssues(String issues) {
+  this.issues = issues;
+  }
+
+  public void setFishEyeHost(String fishEyeHost) {
+  this.fishEyeHost = fishEyeHost;
+  }
+
+  public void setFishEyeRepositoryName(String fishEyeRepositoryName) {
+  this.fishEyeRepositoryName = fishEyeRepositoryName;
+  }
+
+  public void setOutputFile(String outputFile) {
+  this.outputFile = outputFile;
+  }
+
+  public void setJirausername(String jirausername) {
+  this.jirausername = jirausername;
+  }
+
+  public void setJirapassword(String jirapassword) {
+  this.jirapassword = jirapassword;
+  }
+
+  public void setJiraBrowseUrl(String jiraBrowseUrl) {
+  this.jiraBrowseUrl = jiraBrowseUrl;
+  }
+
+  public void setSvnRepositoryUrl(String svnRepositoryUrl) {
+  this.svnRepositoryUrl = svnRepositoryUrl;
+  }
+
+  public void setSvnUsername(String svnUsername) {
+  this.svnUsername = svnUsername;
+  }
+
+  public void setSvnPassword(String svnPassword) {
+  this.svnPassword = svnPassword;
+  }
+
+  public void setParallelism(int parallelism) {
+
+  ```
+   if (parallelism < 1) {
+       throw new IllegalArgumentException(
+               "parallelism must be greater than zero");
+   }
+
+   this.parallelism = parallelism;
+  ```
+
+  }
+
+  public void setDeployedStatuses(String deployedStatuses) {
+
+  ```
+   this.deployedStatuses = deployedStatuses;
+
+   deployedStatusList = new ArrayList<String>();
+
+   if (deployedStatuses == null) {
+       return;
+   }
+
+   StringTokenizer tokenizer =
+           new StringTokenizer(this.deployedStatuses, ",");
+
+   while (tokenizer.hasMoreTokens()) {
+       deployedStatusList.add(tokenizer.nextToken());
+   }
+  ```
+
+  }
+
+  @Override
+  public void execute() throws BuildException {
+
+  ```
+   validateAttributes();
+
+   if (issues == null || issues.trim().isEmpty()) {
+       log("There are no issues to build");
+       return;
+   }
+
+   /*
+    * Make sure the SVNKit factory is initialized before worker threads
+    * start creating SVN clients.
+    */
+   try {
+       SvnKitClientAdapterFactory.setup();
+   } catch (SVNClientException e) {
+       throw new BuildException(
+               "Unable to initialize SVNKit client factory", e);
+   }
+
+   /*
+    * Fisheye authentication is performed once instead of once per issue
+    * or once per file.
+    */
+   try {
+       fisheyeAuthToken =
+               FisheyeUtils.getFisheyeAuthToken(fishEyeHost);
+   } catch (Exception e) {
+       throw new BuildException(
+               "Unable to get Fisheye authentication token", e);
+   }
+
+   jiraStatusCache.clear();
+
+   executor = Executors.newFixedThreadPool(parallelism);
+
+   BufferedWriter writer = null;
+
+   try {
+
+       List<String> issueNames = new ArrayList<String>();
+
+       StringTokenizer tokenizer =
+               new StringTokenizer(issues, ",");
+
+       while (tokenizer.hasMoreTokens()) {
+           issueNames.add(tokenizer.nextToken().trim());
+       }
+
+       /*
+        * Root issues are completely independent from each other.
+        * Therefore they can be processed concurrently.
+        */
+       List<Future<Issue>> futures =
+               new ArrayList<Future<Issue>>();
+
+       for (String issueName : issueNames) {
+
+           futures.add(
+                   executor.submit(new Callable<Issue>() {
+
+                       @Override
+                       public Issue call() {
+
+                           Issue issue =
+                                   new Issue(issueName, 1);
+
+                           log(issue.getIssueName()
+                                   + " : Dependency hierarchy is being constructed..");
+
+                           issue.findRightIssues();
+
+                           return issue;
+                       }
+                   })
+           );
+       }
+
+       List<Issue> rootIssues =
+               new ArrayList<Issue>();
+
+       for (Future<Issue> future : futures) {
+
+           try {
+               rootIssues.add(future.get());
+
+           } catch (Exception e) {
+               throw new BuildException(
+                       "Unable to construct dependency hierarchy", e);
+           }
+       }
+
+
+       /*
+        * HTML generation is intentionally kept single-threaded.
+        * StringBuilder is therefore completely safe here.
+        */
+       StringBuilder htmlReport =
+               new StringBuilder(8192);
+
+       htmlReport.append(
+               "<html><body><table border=\"1\">");
+
+
+       for (Issue issue : rootIssues) {
+
+           htmlReport.append("<tr>");
+
+           htmlReport.append(
+                   "<td>&nbsp;&nbsp;<a href=\"")
+                   .append(jiraBrowseUrl)
+                   .append(issue.getIssueName())
+                   .append("\">")
+                   .append(issue.getIssueName())
+                   .append("</a>&nbsp;&nbsp;</td>");
+
+           addRightIssuesToReport(
+                   issue,
+                   htmlReport);
+
+           htmlReport.append("</tr>");
+       }
+
+
+       htmlReport.append(
+               "</table></body></html>");
+
+
+       writer =
+               new BufferedWriter(
+                       new FileWriter(outputFile));
+
+       writer.write(
+               htmlReport.toString());
+
+   } catch (BuildException e) {
+
+       throw e;
+
+   } catch (Exception e) {
+
+       throw new BuildException(e);
+
+   } finally {
+
+       if (writer != null) {
+
+           try {
+               writer.flush();
+               writer.close();
+
+           } catch (IOException e) {
+               log("Unable to close output file: "
+                       + e.getMessage());
+           }
+       }
+
+       shutdownExecutor();
+       workerSvnClient.remove();
+       workerJiraClient.remove();
+   }
+  ```
+
+  }
+
+  private void shutdownExecutor() {
+
+  ```
+   if (executor == null) {
+       return;
+   }
+
+   executor.shutdown();
+
+   try {
+
+       if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+
+           log("Executor did not terminate within 60 seconds. "
+                   + "Forcing shutdown.");
+
+           executor.shutdownNow();
+       }
+
+   } catch (InterruptedException e) {
+
+       Thread.currentThread().interrupt();
+
+       executor.shutdownNow();
+   }
+  ```
+
+  }
+
+  private void addRightIssuesToReport(
+  Issue issue,
+  StringBuilder htmlReport) {
+
+  ```
+   List<Issue> rightIssues =
+           issue.getRightIssues();
+
+   htmlReport.append(
+           "<td><table border=\"1\">");
+
+   for (Issue issue2 : rightIssues) {
+
+       htmlReport.append("<tr>");
+
+       htmlReport.append(
+               "<td>&nbsp;&nbsp;<a href=\"")
+               .append(jiraBrowseUrl)
+               .append(issue2.getIssueName())
+               .append("\">")
+               .append(issue2.getIssueName())
+               .append("</a>(")
+               .append(issue2.getStatus())
+               .append(")");
+
+       htmlReport.append(
+               "<br/><br/>");
+
+       for (String cmnFile :
+               issue2.getCommonFilesWithLeftIssue()) {
+
+           htmlReport.append(
+                   "<br/>")
+                   .append(cmnFile);
+       }
+
+       htmlReport.append(
+               "&nbsp;&nbsp;</td>");
+
+       addRightIssuesToReport(
+               issue2,
+               htmlReport);
+
+       htmlReport.append("</tr>");
+   }
+
+   htmlReport.append(
+           "</table></td>");
+  ```
+
+  }
+
+  protected void validateAttributes()
+  throws BuildException {
+
+  ```
+   if (fishEyeHost == null
+           || fishEyeHost.trim().equals("")) {
+
+       throw new BuildException(
+               "fishEyeHost attribute must be set");
+   }
+
+   if (fishEyeRepositoryName == null
+           || fishEyeRepositoryName.trim().equals("")) {
+
+       throw new BuildException(
+               "fishEyeRepositoryName attribute must be set");
+   }
+
+   if (outputFile == null
+           || outputFile.trim().equals("")) {
+
+       throw new BuildException(
+               "outputFile attribute must be set");
+   }
+
+   if (jirausername == null
+           || jirausername.trim().equals("")) {
+
+       throw new BuildException(
+               "jirausername attribute must be set");
+   }
+
+   if (jirapassword == null
+           || jirapassword.trim().equals("")) {
+
+       throw new BuildException(
+               "jirapassword attribute must be set");
+   }
+
+   if (svnRepositoryUrl == null
+           || svnRepositoryUrl.trim().equals("")) {
+
+       throw new BuildException(
+               "svnRepositoryUrl attribute must be set");
+   }
+
+   if (deployedStatuses == null
+           || deployedStatuses.trim().equals("")) {
+
+       throw new BuildException(
+               "deployedStatuses attribute must be set");
+   }
+  ```
+
+  }
+
+  private class Issue {
+
+  ```
+   private String issueName;
+
+   private List<Issue> rightIssues =
+           new ArrayList<Issue>();
+
+   private List<Issue> leftIssues =
+           new ArrayList<Issue>();
+
+   private List<String> commonFilesWithLeftIssue =
+           new ArrayList<String>();
+
+   private int level;
+
+   private String status;
+
+
+   public Issue(String issueName) {
+
+       this.issueName = issueName;
+   }
+
+
+   public Issue(String issueName, int level) {
+
+       this.issueName = issueName;
+       this.level = level;
+   }
+
+
+   public Issue(
+           String issueName,
+           int level,
+           String status) {
+
+       this.issueName = issueName;
+       this.level = level;
+       this.status = status;
+   }
+
+
+   public String getIssueName() {
+       return issueName;
+   }
+
+
+   public void setIssueName(String issueName) {
+       this.issueName = issueName;
+   }
+
+
+   public List<Issue> getRightIssues() {
+       return rightIssues;
+   }
+
+
+   public void setRightIssues(
+           List<Issue> rightIssues) {
+
+       this.rightIssues = rightIssues;
+   }
+
+
+   public List<Issue> getLeftIssues() {
+       return leftIssues;
+   }
+
+
+   public void setLeftIssues(
+           List<Issue> leftIssues) {
+
+       this.leftIssues = leftIssues;
+   }
+
+
+   public List<String> getCommonFilesWithLeftIssue() {
+       return commonFilesWithLeftIssue;
+   }
+
+
+   public void setCommonFilesWithLeftIssue(
+           List<String> commonFilesWithLeftIssue) {
+
+       this.commonFilesWithLeftIssue =
+               commonFilesWithLeftIssue;
+   }
+
+
+   public int getLevel() {
+       return level;
+   }
+
+
+   public void setLevel(int level) {
+       this.level = level;
+   }
+
+
+   public String getStatus() {
+       return status;
+   }
+
+
+   public void setStatus(String status) {
+       this.status = status;
+   }
+
+
+   /**
+    * Builds the dependency hierarchy.
+    *
+    * The expensive file-level SVN operations are executed in parallel.
+    * The hierarchy modification itself is performed afterwards in the
+    * current thread so that the tree remains deterministic.
+    */
+   public void findRightIssues() {
+
+       log("Level " + level);
+       log("Finding right issues for " + issueName);
+
+       String query =
+               "select revisions from dir / where comment =~ \\\""
+                       + issueName
+                       + "$\\\" or comment =~ \\\""
+                       + issueName
+                       + "[ \\t\\n\\r\\f,.]+\\\" group by changeset";
+
+       try {
+
+           Map<String, String> map =
+                   getIssueFiles(query);
+
+           if (map.isEmpty()) {
+               return;
+           }
+
+
+           List<String> issueFiles =
+                   new ArrayList<String>(
+                           map.keySet());
+
+
+           /*
+            * Every file can be processed independently.
+            */
+           List<Future<PreviousIssueResult>> futures =
+                   new ArrayList<Future<PreviousIssueResult>>(
+                           issueFiles.size());
+
+
+           for (String issueFile : issueFiles) {
+
+               String revision =
+                       map.get(issueFile);
+
+               futures.add(
+                       executor.submit(
+                               new FileHistoryTask(
+                                       issueFile,
+                                       revision,
+                                       issueName)));
+           }
+
+
+           /*
+            * Merge the results sequentially.
+            */
+           for (Future<PreviousIssueResult> future :
+                   futures) {
+
+               try {
+
+                   PreviousIssueResult result =
+                           future.get();
+
+                   if (result != null) {
+                       processPreviousIssue(result);
+                   }
+
+               } catch (Exception e) {
+
+                   log("Unable to process file history: "
+                           + e.getMessage());
+               }
+           }
+
+
+           /*
+            * Child dependency trees are independent.
+            *
+            * They are executed in parallel as well, but the parent
+            * hierarchy has already been completely constructed.
+            */
+           List<Future<?>> childFutures =
+                   new ArrayList<Future<?>>(
+                           rightIssues.size());
+
+           for (final Issue rightIssue :
+                   rightIssues) {
+
+               childFutures.add(
+                       executor.submit(
+                               new Runnable() {
+
+                                   @Override
+                                   public void run() {
+                                       rightIssue.findRightIssues();
+                                   }
+                               }));
+           }
+
+
+           for (Future<?> childFuture :
+                   childFutures) {
+
+               try {
+                   childFuture.get();
+
+               } catch (Exception e) {
+
+                   log("Unable to construct child dependency: "
+                           + e.getMessage());
+               }
+           }
+
+       } catch (Exception e) {
+
+           log(e.getMessage());
+
+           throw new BuildException(e);
+       }
+   }
+
+
+   /**
+    * Retrieves all files/revisions for an issue from Fisheye.
+    */
+   private Map<String, String> getIssueFiles(
+           String query) {
+
+       Map<String, String> map =
+               new HashMap<String, String>();
+
+       Map<String, String> params =
+               new HashMap<String, String>();
+
+       params.put(
+               "rep",
+               fishEyeRepositoryName);
+
+       params.put(
+               "query",
+               query);
+
+       params.put(
+               "auth",
+               fisheyeAuthToken);
+
+
+       Document changes;
+
+       try {
+
+           changes =
+                   FisheyeUtils.callFisheye(
+                           fishEyeHost,
+                           "query",
+                           params);
+
+       } catch (Exception e) {
+
+           throw new BuildException(
+                   "Fisheye query failed for "
+                           + issueName,
+                   e);
+       }
+
+
+       Node root =
+               changes.getRootElement();
+
+       if (root.getName().equals("error")) {
+
+           throw new BuildException(
+                   "*** received error response: "
+                           + root.getText());
+       }
+
+
+       List<?> changeNodes =
+               changes.selectNodes(
+                       "/response/revisionkey");
+
+
+       for (Iterator<?> iterator =
+               changeNodes.iterator();
+               iterator.hasNext();) {
+
+           Node node =
+                   (Node) iterator.next();
+
+           String path =
+                   node.valueOf("@path");
+
+           String revision =
+                   node.valueOf("@rev");
+
+
+           /*
+            * If the same path appears more than once,
+            * keep the newest revision.
+            */
+           if (map.containsKey(path)) {
+
+               String oldRevision =
+                       map.get(path);
+
+               if (Integer.parseInt(revision)
+                       > Integer.parseInt(oldRevision)) {
+
+                   map.put(path, revision);
+               }
+
+           } else {
+
+               map.put(path, revision);
+           }
+       }
+
+       return map;
+   }
+
+
+   /**
+    * Merges a file-history result into the dependency tree.
+    */
+   private void processPreviousIssue(
+           PreviousIssueResult result) {
+
+       String previousIssueName =
+               result.previousIssueName;
+
+       String previousIssueStatus =
+               result.previousIssueStatus;
+
+       String issueFile =
+               result.issueFile;
+
+
+       if (deployedStatusList.contains(
+               previousIssueStatus)) {
+
+           log(previousIssueName
+                   + " is a deployed issue, it will not be checked further");
+
+           return;
+       }
+
+
+       Issue rightIssue =
+               getRightIssue(previousIssueName);
+
+
+       if (rightIssue != null) {
+
+           rightIssue
+                   .getCommonFilesWithLeftIssue()
+                   .add(issueFile);
+
+           return;
+       }
+
+
+       String status =
+               jiraStasusMap == null
+                       ? null
+                       : jiraStasusMap.get(
+                               previousIssueStatus);
+
+
+       rightIssue =
+               new Issue(
+                       previousIssueName,
+                       level + 1,
+                       status == null ? "" : status);
+
+
+       rightIssue
+               .getCommonFilesWithLeftIssue()
+               .add(issueFile);
+
+
+       rightIssue
+               .getLeftIssues()
+               .addAll(getLeftIssues());
+
+       rightIssue
+               .getLeftIssues()
+               .add(this);
+
+
+       /*
+        * Do not add an issue that already exists on the left side
+        * of the dependency hierarchy. This prevents circular trees.
+        */
+       if (!getLeftIssues().contains(rightIssue)) {
+
+           rightIssues.add(rightIssue);
+
+       } else {
+
+           log(previousIssueName
+                   + " is an already checked issue in the hierarchy.."
+                   + "a deeper previous issue will be searched..");
+       }
+   }
+
+
+   private Issue getRightIssue(
+           String issueName) {
+
+       for (Issue rightIssue :
+               rightIssues) {
+
+           if (rightIssue.issueName.equals(issueName)) {
+               return rightIssue;
+           }
+       }
+
+       return null;
+   }
+
+
+   @Override
+   public boolean equals(Object issue) {
+
+       if (this == issue) {
+           return true;
+       }
+
+       if (!(issue instanceof Issue)) {
+           return false;
+       }
+
+       Issue iss =
+               (Issue) issue;
+
+       return issueName != null
+               && issueName.equals(
+                       iss.getIssueName());
+   }
+
+
+   @Override
+   public int hashCode() {
+
+       return issueName == null
+               ? 0
+               : issueName.hashCode();
+   }
+  ```
+
+  }
+
+  /**
+
+  * Performs SVN history lookup for one file.
+  *
+  * This class deliberately does not modify the Issue hierarchy.
+  * It only returns data. This is what makes parallel execution safe.
+    */
+    private class FileHistoryTask
+    implements Callable<PreviousIssueResult> {
+
+    private final String issueFile;
+    private final String revision;
+    private final String currentIssueName;
+
+    FileHistoryTask(
+    String issueFile,
+    String revision,
+    String currentIssueName) {
+
+    ```
+     this.issueFile = issueFile;
+     this.revision = revision;
+     this.currentIssueName = currentIssueName;
+    ```
+
+    }
+
+    @Override
+    public PreviousIssueResult call() {
+
+    ```
+     try {
+
+         log("Log messages for "
+                 + issueFile
+                 + " is being retrieved..");
+
+
+         ISVNClientAdapter client =
+                 workerSvnClient.get();
+
+
+         ISVNLogMessage[] logMessages =
+                 client.getLogMessages(
+                         new SVNUrl(
+                                 svnRepositoryUrl
+                                         + issueFile),
+                         getRevisionFrom(revision),
+                         getRevisionFrom("0"));
+
+
+         /*
+          * The SVN log is ordered from newest to oldest.
+          * Therefore the first different issue is the one we need.
+          */
+         for (ISVNLogMessage logMessage :
+                 logMessages) {
+
+             String message =
+                     logMessage.getMessage();
+
+             if (message == null) {
+                 continue;
+             }
+
+             message =
+                     message.trim();
+
+             if (message.isEmpty()) {
+                 continue;
+             }
+
+             if (currentIssueName.equals(message)) {
+                 continue;
+             }
+
+
+             String previousIssueStatus =
+                     getJiraIssueStatus(message);
+
+
+             log(message
+                     + " is a previous issue for "
+                     + currentIssueName);
+
+
+             return new PreviousIssueResult(
+                     issueFile,
+                     message,
+                     previousIssueStatus);
+         }
+
+     } catch (Exception e) {
+
+         log("Log messages of "
+                 + issueFile
+                 + " cannot be retrieved: "
+                 + e.getMessage());
+     }
+
+     return null;
+    ```
+
+    }
+    }
+
+  /**
+
+  * Result of processing one SVN file history.
+    */
+    private static class PreviousIssueResult {
+
+    private final String issueFile;
+    private final String previousIssueName;
+    private final String previousIssueStatus;
+
+    PreviousIssueResult(
+    String issueFile,
+    String previousIssueName,
+    String previousIssueStatus) {
+
+    ```
+     this.issueFile = issueFile;
+     this.previousIssueName = previousIssueName;
+     this.previousIssueStatus = previousIssueStatus;
+    ```
+
+    }
+    }
+
+  /**
+
+  * Gets a Jira issue status.
+  *
+  * Results are cached because the same issue can appear in many SVN
+  * histories.
+    */
+    private String getJiraIssueStatus(
+    String issueName) {
+
+    String cached =
+    jiraStatusCache.get(issueName);
+
+    if (cached != null) {
+    return cached;
+    }
+
+    String status =
+    workerJiraClient
+    .get()
+    .getIssueStatus(issueName);
+
+    if (status == null) {
+    status = "";
+    }
+
+    String existing =
+    jiraStatusCache.putIfAbsent(
+    issueName,
+    status);
+
+    return existing != null
+    ? existing
+    : status;
+    }
+
+  public static void main(String[] args) {
+
+  ```
+   try {
+
+       SvnKitClientAdapterFactory.setup();
+
+   } catch (SVNClientException e) {
+
+       throw new RuntimeException(
+               "Cannot load JavaHL binding :",
+               e);
+   }
+
+
+   try {
+
+       CreateCommitDependencyReport report =
+               new CreateCommitDependencyReport();
+
+
+       /*
+        * These are used by the worker SVN clients.
+        */
+       report.setSvnUsername("");
+       report.setSvnPassword("");
+
+
+       report.setParallelism(8);
+
+
+       report.setIssues(
+               "ITPRTB-1188");
+
+
+       report.setJirausername(
+               "");
+
+       report.setJirapassword(
+               "");
+
+
+       report.setJiraBrowseUrl(
+               "https://jira.aktifbank.com.tr/browse/");
+
+
+       report.setJiraStatuses(
+               "1#Open,"
+               + "10033#In Review,"
+               + "10010#In Analysis,"
+               + "10024#Analyst Rejected,"
+               + "10028#Moderator Rejected,"
+               + "10016#Rejected Needed More Info,"
+               + "10018#Development,"
+               + "10036#Test Control,"
+               + "10985#DB Review,"
+               + "10042#Code Review,"
+               + "10034#TestDeployment,"
+               + "10009#Analyst Test,"
+               + "10787#Test,"
+               + "10026#UAT Deployment,"
+               + "10039#UAT Deployment Control,"
+               + "11484#UAT Failed,"
+               + "10050#User Test Wait,"
+               + "10001#User Test,"
+               + "10022#User Test Failed,"
+               + "10785#UAT,"
+               + "11696#Guvenlik Onayi,"
+               + "11697#Canliya Hazir,"
+               + "10030#Prod Deployment Wait,"
+               + "10040#Prod Deployment Review,"
+               + "11701#Beklemede,"
+               + "11985#Iptal,"
+               + "10027#Prod Deployment");
+
+
+       report.setDeployedStatuses(
+               "6,10040,10041,10289");
+
+
+       report.setSvnRepositoryUrl(
+               "http://10.90.11.50/svn/BInspire");
+
+
+       report.setFishEyeHost(
+               "https://fisheye.aktifbank.com.tr");
+
+
+       report.setFishEyeRepositoryName(
+               "BInspireNew1");
+
+
+       report.setOutputFile(
+               "report.html");
+
+
+       report.execute();
+
+
+   } catch (Exception e) {
+
+       e.printStackTrace();
+   }
+  ```
+
+  }
+  }
