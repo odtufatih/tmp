@@ -1,85 +1,76 @@
-ITPRTB-1230 => ITPRTB-1244 => ITPRTB-1244 => ITPRBK-2229 => ITPRTB-1297 => ITPRTB-1244 => ITPRMEN-805 => ITPRDKALCM-76
-=> ITPRTB-1230 => ITPRTB-1244 => ITPRTB-1244 => ITPRBK-2122 => ITPRNKY-514 => ITPRMEN-695
-
-
-
-ITPRNKY-514 => ITPRMEN-695 => ITPRTB-1230 => ITPRTB-1244 => ITPRBK-2229 => ITPRTB-1297
-
-buildCommitDependencyReportForGivenIssues:
-      [svn] <CreateCommitDependencyReport> started ...
-      [svn] [LEVEL 1] Starting root issue: ITPRMEN-805 | Thread: main
-      [svn] [LEVEL 1] Finding right issues for ITPRMEN-805 | Thread: dependency-1
-      [svn] [LEVEL 1] Finding right issues for ITPRMEN-805 | Thread: dependency-1
-      [svn] [LEVEL 1] ITPRMEN-805 -> 1 unique files found | Thread: dependency-1
-      [svn] [LEVEL 1] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 582913 | Thread: svn-file-1 | Thread: svn-file-1
-      [svn] [LEVEL 1] Previous issue found as ITPRDKALCM-76 | Thread: svn-file-1
-      [svn] [LEVEL 1] ITPRDKALCM-76 is a previous issue for ITPRMEN-805 | Thread: svn-file-1
-      [svn] [LEVEL 2] ITPRMEN-805 -> RIGHT -> ITPRDKALCM-76 | common file: trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl | Thread: svn-file-1
-      [svn] [LEVEL 1] ITPRMEN-805 -> all 1 file analyses completed | Thread: svn-file-1
-      [svn] [LEVEL 1] Finished issue: ITPRMEN-805 | Thread: svn-file-1
-      [svn] [LEVEL 2] Finding right issues for ITPRDKALCM-76 | Thread: dependency-2
-      [svn] [LEVEL 2] Finding right issues for ITPRDKALCM-76 | Thread: dependency-2
-      [svn] [LEVEL 2] ITPRDKALCM-76 -> 2 unique files found | Thread: dependency-2
-      [svn] [LEVEL 2] Processing file trunk/webext/webext-webexternal/src/main/java/tr/com/aktifbank/webexternal/adc/businessintegration/services/CompanyServices.java @ 582849 | Thread: svn-file-2 | Thread: svn-file-2
-      [svn] [LEVEL 2] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 582851 | Thread: svn-file-3 | Thread: svn-file-3
-      [svn] [LEVEL 2] Previous issue found as ITPRTB-1230 | Thread: svn-file-3
-      [svn] [LEVEL 2] ITPRTB-1230 is a previous issue for ITPRDKALCM-76 | Thread: svn-file-3
-      [svn] [LEVEL 3] ITPRDKALCM-76 -> RIGHT -> ITPRTB-1230 | common file: trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl | Thread: svn-file-3
-      [svn] [LEVEL 2] ITPRDKALCM-76 -> all 2 file analyses completed | Thread: svn-file-3
+ [svn] <CreateCommitDependencyReport> started ...
+      [svn] [LEVEL 1] Starting root issue: ITPRNKY-514 | Thread: main
+      [svn] [LEVEL 1] Finding right issues for ITPRNKY-514 | Thread: dependency-1
+      [svn] [LEVEL 1] Finding right issues for ITPRNKY-514 | Thread: dependency-1
+      [svn] [LEVEL 1] ITPRNKY-514 -> 1 unique files found | Thread: dependency-1
+      [svn] [LEVEL 1] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 579608 | Thread: svn-file-1 | Thread: svn-file-1
+      [svn] [LEVEL 1] Previous issue found as ITPRMEN-695 | Thread: svn-file-1
+      [svn] [LEVEL 1] ITPRMEN-695 is a previous issue for ITPRNKY-514 | Thread: svn-file-1
+      [svn] [LEVEL 2] ITPRNKY-514 -> RIGHT -> ITPRMEN-695 | common file: trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl | Thread: svn-file-1
+      [svn] [LEVEL 1] ITPRNKY-514 -> all 1 file analyses completed | Thread: svn-file-1
+      [svn] [LEVEL 1] Finished issue: ITPRNKY-514 | Thread: svn-file-1
+      [svn] [LEVEL 2] Finding right issues for ITPRMEN-695 | Thread: dependency-2
+      [svn] [LEVEL 2] Finding right issues for ITPRMEN-695 | Thread: dependency-2
+      [svn] [LEVEL 2] ITPRMEN-695 -> 1 unique files found | Thread: dependency-2
+      [svn] [LEVEL 2] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 579509 | Thread: svn-file-2 | Thread: svn-file-2
+      [svn] [LEVEL 2] Previous issue found as ITPRTB-1230 | Thread: svn-file-2
+      [svn] [LEVEL 2] ITPRTB-1230 is a previous issue for ITPRMEN-695 | Thread: svn-file-2
+      [svn] [LEVEL 3] ITPRMEN-695 -> RIGHT -> ITPRTB-1230 | common file: trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl | Thread: svn-file-2
+      [svn] [LEVEL 2] ITPRMEN-695 -> all 1 file analyses completed | Thread: svn-file-2
+      [svn] [LEVEL 2] Finished issue: ITPRMEN-695 | Thread: svn-file-2
       [svn] [LEVEL 3] Finding right issues for ITPRTB-1230 | Thread: dependency-3
-      [svn] [LEVEL 2] Finished issue: ITPRDKALCM-76 | Thread: svn-file-3
       [svn] [LEVEL 3] Finding right issues for ITPRTB-1230 | Thread: dependency-3
       [svn] [LEVEL 3] ITPRTB-1230 -> 2 unique files found | Thread: dependency-3
-      [svn] [LEVEL 3] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 584865 | Thread: svn-file-4 | Thread: svn-file-4
-      [svn] [LEVEL 3] Processing file trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl @ 584865 | Thread: svn-file-5 | Thread: svn-file-5
-      [svn] [LEVEL 3] Previous issue found as ITPRTB-1244 | Thread: svn-file-5
-      [svn] [LEVEL 3] ITPRTB-1244 is a previous issue for ITPRTB-1230 | Thread: svn-file-5
-      [svn] [LEVEL 4] ITPRTB-1230 -> RIGHT -> ITPRTB-1244 | common file: trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl | Thread: svn-file-5
-      [svn] [LEVEL 4] Finding right issues for ITPRTB-1244 | Thread: dependency-4
-      [svn] [LEVEL 4] Finding right issues for ITPRTB-1244 | Thread: dependency-4
-      [svn] [LEVEL 4] ITPRTB-1244 -> 3 unique files found | Thread: dependency-4
-      [svn] [LEVEL 4] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 584799 | Thread: svn-file-6 | Thread: svn-file-6
-      [svn] [LEVEL 4] Processing file trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl @ 584803 | Thread: svn-file-7 | Thread: svn-file-7
-      [svn] [LEVEL 4] Processing file trunk/webext/webext-webexternal/wsdl/CCWebServices.wsdl @ 584721 | Thread: svn-file-8 | Thread: svn-file-8
+      [svn] [LEVEL 3] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 584865 | Thread: svn-file-3 | Thread: svn-file-3
+      [svn] [LEVEL 3] Processing file trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl @ 584865 | Thread: svn-file-4 | Thread: svn-file-4
+      [svn] [LEVEL 3] Previous issue found as ITPRTB-1244 | Thread: svn-file-3
       [svn] [LEVEL 3] Previous issue found as ITPRTB-1244 | Thread: svn-file-4
+      [svn] [LEVEL 3] ITPRTB-1244 is a previous issue for ITPRTB-1230 | Thread: svn-file-3
+      [svn] [LEVEL 4] ITPRTB-1230 -> RIGHT -> ITPRTB-1244 | common file: trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl | Thread: svn-file-3
+      [svn] [LEVEL 4] Finding right issues for ITPRTB-1244 | Thread: dependency-4
+      [svn] [LEVEL 4] Finding right issues for ITPRTB-1244 | Thread: dependency-4
       [svn] [LEVEL 3] ITPRTB-1244 is a previous issue for ITPRTB-1230 | Thread: svn-file-4
       [svn] [LEVEL 3] ITPRTB-1230 -> all 2 file analyses completed | Thread: svn-file-4
       [svn] [LEVEL 3] Finished issue: ITPRTB-1230 | Thread: svn-file-4
-      [svn] [LEVEL 4] Previous issue found as ITPRTB-1218 | Thread: svn-file-8
-      [svn] [LEVEL 4] ITPRTB-1218 is a previous issue for ITPRTB-1244 | Thread: svn-file-8
-      [svn] [LEVEL 4] ITPRTB-1218 is a deployed issue, it will not be checked further | Thread: svn-file-8
-      [svn] [LEVEL 4] Previous issue found as ITPRBK-2229 | Thread: svn-file-7
-      [svn] [LEVEL 4] ITPRBK-2229 is a previous issue for ITPRTB-1244 | Thread: svn-file-7
-      [svn] [LEVEL 5] ITPRTB-1244 -> RIGHT -> ITPRBK-2229 | common file: trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl | Thread: svn-file-7
+      [svn] [LEVEL 4] ITPRTB-1244 -> 3 unique files found | Thread: dependency-4
+      [svn] [LEVEL 4] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 584799 | Thread: svn-file-5 | Thread: svn-file-5
+      [svn] [LEVEL 4] Processing file trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl @ 584803 | Thread: svn-file-6 | Thread: svn-file-6
+      [svn] [LEVEL 4] Processing file trunk/webext/webext-webexternal/wsdl/CCWebServices.wsdl @ 584721 | Thread: svn-file-7 | Thread: svn-file-7
+      [svn] [LEVEL 4] Previous issue found as ITPRTB-1218 | Thread: svn-file-7
+      [svn] [LEVEL 4] ITPRTB-1218 is a previous issue for ITPRTB-1244 | Thread: svn-file-7
+      [svn] [LEVEL 4] ITPRTB-1218 is a deployed issue, it will not be checked further | Thread: svn-file-7
+      [svn] [LEVEL 4] Previous issue found as ITPRBK-2229 | Thread: svn-file-5
+      [svn] [LEVEL 4] ITPRBK-2229 is a previous issue for ITPRTB-1244 | Thread: svn-file-5
+      [svn] [LEVEL 5] ITPRTB-1244 -> RIGHT -> ITPRBK-2229 | common file: trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl | Thread: svn-file-5
       [svn] [LEVEL 5] Finding right issues for ITPRBK-2229 | Thread: dependency-5
       [svn] [LEVEL 5] Finding right issues for ITPRBK-2229 | Thread: dependency-5
       [svn] [LEVEL 5] ITPRBK-2229 -> 2 unique files found | Thread: dependency-5
-      [svn] [LEVEL 5] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 584621 | Thread: svn-file-9 | Thread: svn-file-9
-      [svn] [LEVEL 5] Processing file trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl @ 584620 | Thread: svn-file-10 | Thread: svn-file-10
-      [svn] [LEVEL 5] Previous issue found as ITPRTB-1297 | Thread: svn-file-10
-      [svn] [LEVEL 5] ITPRTB-1297 is a previous issue for ITPRBK-2229 | Thread: svn-file-10
-      [svn] [LEVEL 6] ITPRBK-2229 -> RIGHT -> ITPRTB-1297 | common file: trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl | Thread: svn-file-10
-      [svn] [LEVEL 6] Finding right issues for ITPRTB-1297 | Thread: dependency-6
-      [svn] [LEVEL 6] Finding right issues for ITPRTB-1297 | Thread: dependency-6
-      [svn] [LEVEL 6] ITPRTB-1297 -> 2 unique files found | Thread: dependency-6
-      [svn] [LEVEL 6] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 584129 | Thread: svn-file-11 | Thread: svn-file-11
-      [svn] [LEVEL 6] Processing file trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl @ 584129 | Thread: svn-file-12 | Thread: svn-file-12
+      [svn] [LEVEL 5] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 584621 | Thread: svn-file-8 | Thread: svn-file-8
+      [svn] [LEVEL 5] Processing file trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl @ 584620 | Thread: svn-file-9 | Thread: svn-file-9
       [svn] [LEVEL 4] Previous issue found as ITPRBK-2229 | Thread: svn-file-6
       [svn] [LEVEL 4] ITPRBK-2229 is a previous issue for ITPRTB-1244 | Thread: svn-file-6
       [svn] [LEVEL 4] ITPRTB-1244 -> all 3 file analyses completed | Thread: svn-file-6
       [svn] [LEVEL 4] Finished issue: ITPRTB-1244 | Thread: svn-file-6
-      [svn] [LEVEL 6] Previous issue found as ITPRTB-1244 | Thread: svn-file-12
-      [svn] [LEVEL 6] ITPRTB-1244 is a previous issue for ITPRTB-1297 | Thread: svn-file-12
-      [svn] [LEVEL 6] ITPRTB-1244 is an already checked issue in the hierarchy.. a deeper previous issue will be searched.. | Thread: svn-file-12
       [svn] [LEVEL 5] Previous issue found as ITPRTB-1297 | Thread: svn-file-9
       [svn] [LEVEL 5] ITPRTB-1297 is a previous issue for ITPRBK-2229 | Thread: svn-file-9
-      [svn] [LEVEL 5] ITPRBK-2229 -> all 2 file analyses completed | Thread: svn-file-9
-      [svn] [LEVEL 5] Finished issue: ITPRBK-2229 | Thread: svn-file-9
+      [svn] [LEVEL 6] ITPRBK-2229 -> RIGHT -> ITPRTB-1297 | common file: trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl | Thread: svn-file-9
+      [svn] [LEVEL 6] Finding right issues for ITPRTB-1297 | Thread: dependency-6
+      [svn] [LEVEL 6] Finding right issues for ITPRTB-1297 | Thread: dependency-6
+      [svn] [LEVEL 6] ITPRTB-1297 -> 2 unique files found | Thread: dependency-6
+      [svn] [LEVEL 6] Processing file trunk/webext/webext-webexternal/wsdl/IntngWebServices.wsdl @ 584129 | Thread: svn-file-10 | Thread: svn-file-10
+      [svn] [LEVEL 6] Processing file trunk/webext/webext-webexternal/wsdl/PascommblWebServices.wsdl @ 584129 | Thread: svn-file-11 | Thread: svn-file-11
+      [svn] [LEVEL 6] Previous issue found as ITPRTB-1244 | Thread: svn-file-10
+      [svn] [LEVEL 6] ITPRTB-1244 is a previous issue for ITPRTB-1297 | Thread: svn-file-10
+      [svn] [LEVEL 6] ITPRTB-1244 is an already checked issue in the hierarchy.. a deeper previous issue will be searched.. | Thread: svn-file-10
+      [svn] [LEVEL 5] Previous issue found as ITPRTB-1297 | Thread: svn-file-8
+      [svn] [LEVEL 5] ITPRTB-1297 is a previous issue for ITPRBK-2229 | Thread: svn-file-8
+      [svn] [LEVEL 5] ITPRBK-2229 -> all 2 file analyses completed | Thread: svn-file-8
+      [svn] [LEVEL 5] Finished issue: ITPRBK-2229 | Thread: svn-file-8
       [svn] [LEVEL 6] Previous issue found as ITPRTB-1244 | Thread: svn-file-11
       [svn] [LEVEL 6] ITPRTB-1244 is a previous issue for ITPRTB-1297 | Thread: svn-file-11
       [svn] [LEVEL 6] ITPRTB-1244 is an already checked issue in the hierarchy.. a deeper previous issue will be searched.. | Thread: svn-file-11
       [svn] [LEVEL 6] ITPRTB-1297 -> all 2 file analyses completed | Thread: svn-file-11
       [svn] [LEVEL 6] Finished issue: ITPRTB-1297 | Thread: svn-file-11
       [svn] <CreateCommitDependencyReport> finished.
-
-
+     [mail] Sending email: Akustik Ba??ml?l?k Raporu
+     [mail] Sent email with 1 attachment
